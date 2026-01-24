@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversor Excel para TXT - Formato Específico</title>
+    <title>Conversor Excel para TXT</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>📊 Conversor Excel para TXT</h1>
-            <p class="subtitle">Converta planilhas Excel para o formato TXT específico</p>
+            <p class="subtitle">Converta planilhas Excel para formato TXT específico</p>
         </header>
 
         <main>
@@ -24,7 +24,7 @@
                         Selecione um arquivo
                     </label>
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
-                    <p class="file-types">Formatos suportados: .xlsx, .xls, .csv</p>
+                    <p class="file-types">Formatos: .xlsx, .xls, .csv</p>
                 </div>
             </div>
 
@@ -36,75 +36,26 @@
                     ⬇️ Baixar Arquivo TXT
                 </button>
                 <button id="clearBtn" class="btn btn-secondary">
-                    🗑️ Limpar Tudo
+                    🗑️ Limpar
                 </button>
             </div>
 
             <div class="preview-section">
                 <div class="section-header">
                     <h3>📋 Prévia do Resultado</h3>
-                    <div class="stats" id="stats">
-                        <span>0 linhas processadas</span>
-                    </div>
+                    <div class="stats" id="stats">0 linhas</div>
                 </div>
                 <div class="preview-container">
                     <textarea id="previewText" readonly placeholder="O conteúdo convertido aparecerá aqui..."></textarea>
                 </div>
             </div>
-
-            <div class="instructions">
-                <h3>📝 Formato de Saída Correto</h3>
-                <div class="format-example">
-                    <div class="format-line">
-                        <span class="field">Categoria</span>
-                        <span class="desc">10 caracteres (ex: "ÁGUA      ")</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Código Item</span>
-                        <span class="desc">9 caracteres (ex: "102592   ")</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Parte Código</span>
-                        <span class="desc">7 caracteres (ex: "A000011")</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Data</span>
-                        <span class="desc">DD/MM/YYYY (10 caracteres)</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Período</span>
-                        <span class="desc">6 caracteres (ex: "012025")</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Valor1</span>
-                        <span class="desc">14 caracteres, zeros à esquerda</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Valor2</span>
-                        <span class="desc">15 caracteres, zeros à esquerda</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Valor3</span>
-                        <span class="desc">14 caracteres, zeros à esquerda</span>
-                    </div>
-                    <div class="format-line">
-                        <span class="field">Valor4</span>
-                        <span class="desc">15 caracteres, zeros à esquerda</span>
-                    </div>
-                    <div class="format-line total">
-                        <span class="field">TOTAL</span>
-                        <span class="desc">101 caracteres por linha</span>
-                    </div>
-                </div>
-            </div>
         </main>
 
         <footer>
-            <p>Desenvolvido para conversão específica de planilhas | Total de 101 caracteres por linha</p>
+            <p>Total de 101 caracteres por linha | Desenvolvido para conversão específica</p>
         </footer>
     </div>
 
-    <script src="converter.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
