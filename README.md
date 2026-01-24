@@ -1,16 +1,18 @@
-# Conversor Excel para TXT Específico
+# Conversor Excel para TXT - Formato Específico
 
-Uma aplicação web estática para converter planilhas Excel/CSV para arquivos TXT com formato específico de campos fixos.
-
-## 🌐 Link Online
-Acesse a aplicação em: https://seuusuario.github.io/conversor-txt/
+Aplicação web para converter planilhas Excel para um formato TXT específico com 101 caracteres por linha.
 
 ## 🚀 Funcionalidades
-- Conversão de Excel (.xlsx, .xls) e CSV para TXT
-- Formato específico com campos de tamanho fixo
-- Pré-visualização em tempo real
-- Interface responsiva
-- Processamento 100% no navegador
-- Suporte a arrastar e soltar
 
-## 📋 Formato de Saída
+- Carregar arquivos Excel (.xlsx, .xls) ou CSV
+- Interface drag-and-drop amigável
+- Pré-visualização das primeiras 20 linhas
+- Download do arquivo convertido
+- Formatação específica conforme exemplo fornecido
+- Validação de formato (101 caracteres por linha)
+
+## 📋 Formato de Saída Específico
+
+Cada linha do arquivo TXT segue exatamente este formato:
+
+
