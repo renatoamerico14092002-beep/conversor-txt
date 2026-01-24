@@ -1,7 +1,139 @@
+// ========== CONVERSOR ==========
+class ExcelToTxtConverter {
+    constructor() {
+        this.txtContent = '';
+        this.lineCount = 0;
+    }
+
+    formatField(value, length, align = 'left', padChar = ' ') {
+        let str = String(value || '');
+        
+        // Remove acentos mas mantém letras
+        str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        
+        if (align === 'left') {
+            return str.padEnd(length, padChar);
+        } else {
+            return str.padStart(length, padChar);
+        }
+    }
+
+    formatNumber(value, length) {
+        let num = parseFloat(value || 0);
+        let intValue = Math.round(num * 100);
+        intValue = Math.abs(intValue);
+        return intValue.toString().padStart(length, '0');
+    }
+
+    formatDate(dateString) {
+        try {
+            let date;
+            if (dateString instanceof Date) {
+                date = dateString;
+            } else if (typeof dateString === 'string') {
+                const datePart = dateString.split(' ')[0];
+                date = new Date(datePart);
+            } else {
+                date = new Date();
+            }
+            
+            if (isNaN(date.getTime())) {
+                return '00/00/0000';
+            }
+            
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            return '00/00/0000';
+        }
+    }
+
+    formatParteCodigo(parteCodigo) {
+        let str = String(parteCodigo || '');
+        
+        if (/^[A-Za-z]/.test(str)) {
+            const match = str.match(/^([A-Za-z])(\d*)$/);
+            if (match) {
+                const letra = match[1];
+                const numeros = match[2] || '0';
+                return letra + numeros.padStart(6, '0');
+            }
+        }
+        
+        const num = parseInt(str) || 0;
+        return num.toString().padStart(7, '0');
+    }
+
+    formatPeriodo(periodo) {
+        let str = String(periodo || '');
+        return str.padStart(6, '0');
+    }
+
+    convertRow(row) {
+        // Usa nomes de colunas mais comuns
+        const categoria = this.formatField(row.categoria || row.CATEGORIA || 'AGUA', 10);
+        const codigoItem = this.formatField(row.codigo_item || row['codigo item'] || row.CODIGO_ITEM || '', 9);
+        const parteCodigo = this.formatParteCodigo(row.parte_codigo || row.PARTE_CODIGO || '');
+        const data = this.formatDate(row.data || row.DATA || '');
+        const periodo = this.formatPeriodo(row.periodo || row.PERIODO || '');
+        
+        const valor1 = this.formatNumber(row.valor1 || row.VALOR1 || 0, 14);
+        const valor2 = this.formatNumber(row.valor2 || row.VALOR2 || 0, 15);
+        const valor3 = this.formatNumber(row.valor3 || row.VALOR3 || 0, 14);
+        const valor4 = this.formatNumber(row.valor4 || row.VALOR4 || 0, 15);
+        
+        return `${categoria}${codigoItem}${parteCodigo}${data}${periodo}${valor1}${valor2}${valor3}${valor4}`;
+    }
+
+    convertExcelData(data) {
+        this.txtContent = '';
+        this.lineCount = 0;
+        
+        if (!data || !Array.isArray(data)) {
+            throw new Error('Dados inválidos');
+        }
+
+        data.forEach(row => {
+            try {
+                const txtLine = this.convertRow(row);
+                this.txtContent += txtLine + '\n';
+                this.lineCount++;
+            } catch (error) {
+                console.error('Erro na linha:', row, error);
+            }
+        });
+
+        return {
+            content: this.txtContent,
+            lineCount: this.lineCount
+        };
+    }
+
+    downloadTxt(filename = 'convertido.txt') {
+        if (!this.txtContent) {
+            throw new Error('Nada para baixar');
+        }
+
+        const blob = new Blob([this.txtContent], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+}
+
+// ========== APLICAÇÃO WEB ==========
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Aplicação iniciada');
     
-    // Elementos DOM
+    // Elementos
     const fileInput = document.getElementById('fileInput');
     const dropArea = document.getElementById('dropArea');
     const convertBtn = document.getElementById('convertBtn');
@@ -10,485 +142,192 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewText = document.getElementById('previewText');
     const stats = document.getElementById('stats');
     const fileInfo = document.getElementById('fileInfo');
-    const loading = document.getElementById('loading');
     
-    // Instância do conversor
+    // Conversor
     const converter = new ExcelToTxtConverter();
-    
-    // Estado da aplicação
-    let currentFile = null;
     let excelData = null;
+    let currentFile = null;
     
-    // Verificar se XLSX está disponível
-    if (typeof XLSX === 'undefined') {
-        alert('Erro: Biblioteca para leitura de Excel não carregada. Verifique sua conexão com a internet.');
-        return;
-    }
+    // ===== SELEÇÃO DE ARQUIVO SIMPLIFICADA =====
     
-    // Funções auxiliares
-    function showLoading(show) {
-        loading.style.display = show ? 'flex' : 'none';
-    }
-    
-    function showMessage(message, type = 'info') {
-        // Remove mensagens anteriores
-        const existingMessages = document.querySelectorAll('.temp-message');
-        existingMessages.forEach(msg => msg.remove());
-        
-        if (message) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `temp-message ${type === 'error' ? 'error-message' : 'success-message'}`;
-            messageDiv.textContent = message;
-            dropArea.appendChild(messageDiv);
-            
-            // Remove após 5 segundos
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
-                }
-            }, 5000);
-        }
-    }
-    
-    // Event Listeners para drag and drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    function preventDefaults(e) {
+    // Clique no label
+    document.querySelector('.btn-primary').addEventListener('click', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlight, false);
+        fileInput.click();
     });
     
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlight, false);
-    });
-    
-    function highlight() {
-        dropArea.classList.add('dragover');
-    }
-    
-    function unhighlight() {
-        dropArea.classList.remove('dragover');
-    }
-    
-    // Processar arquivo dropado
-    dropArea.addEventListener('drop', function(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
-    });
-    
-    // Processar seleção de arquivo
-    fileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-            handleFile(e.target.files[0]);
-        }
-    });
-    
-    // Também permitir clicar em toda a área de drop
+    // Clique na área de drop
     dropArea.addEventListener('click', function(e) {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+        if (e.target === dropArea || e.target === dropArea.querySelector('.upload-icon') || 
+            e.target === dropArea.querySelector('h3') || e.target === dropArea.querySelector('p')) {
             fileInput.click();
         }
     });
     
-    function handleFile(file) {
-        console.log('Processando arquivo:', file.name);
-        currentFile = file;
-        
-        // Verificar se é um arquivo Excel
-        const validExtensions = ['.xlsx', '.xls', '.csv'];
-        const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-        
-        if (!validExtensions.includes(fileExt)) {
-            showMessage('Formato de arquivo não suportado. Use .xlsx, .xls ou .csv.', 'error');
-            return;
-        }
-        
-        // Verificar tamanho do arquivo (limite de 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showMessage('Arquivo muito grande. O limite é 10MB.', 'error');
-            return;
-        }
-        
-        // Mostrar loading
-        showLoading(true);
-        fileInfo.textContent = `Processando: ${file.name}`;
-        
-        // Ler o arquivo
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            try {
-                const data = e.target.result;
-                let workbook;
-                
-                // Determinar o tipo de leitura baseado na extensão
-                if (fileExt === '.csv') {
-                    workbook = XLSX.read(data, { 
-                        type: 'binary', 
-                        cellDates: true,
-                        dateNF: 'dd/mm/yyyy'
-                    });
-                } else {
-                    workbook = XLSX.read(data, { 
-                        type: 'binary', 
-                        cellDates: true,
-                        dateNF: 'dd/mm/yyyy'
-                    });
-                }
-                
-                // Pegar a primeira planilha
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Converter para JSON
-                excelData = XLSX.utils.sheet_to_json(worksheet, { 
-                    defval: '',
-                    raw: false,
-                    dateNF: 'dd/mm/yyyy'
-                });
-                
-                console.log('Dados carregados:', excelData);
-                console.log('Número de linhas:', excelData.length);
-                
-                if (excelData.length > 0) {
-                    console.log('Primeira linha:', excelData[0]);
-                    console.log('Colunas disponíveis:', Object.keys(excelData[0]));
-                }
-                
-                // Habilitar botão de conversão
-                convertBtn.disabled = false;
-                
-                // Atualizar informações do arquivo
-                fileInfo.textContent = `${file.name} (${excelData.length} linhas carregadas)`;
-                showMessage('Arquivo carregado com sucesso! Clique em "Converter para TXT" para processar.', 'success');
-                
-            } catch (error) {
-                console.error('Erro ao processar arquivo:', error);
-                showMessage('Erro ao processar o arquivo: ' + error.message, 'error');
-                fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
-            } finally {
-                showLoading(false);
-            }
-        };
-        
-        reader.onerror = function() {
-            showLoading(false);
-            showMessage('Erro ao ler o arquivo. Tente novamente.', 'error');
-            fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
-        };
-        
-        reader.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                fileInfo.textContent = `Carregando: ${percent}%`;
-            }
-        };
-        
-        // Usar readAsArrayBuffer para melhor compatibilidade
-        reader.readAsArrayBuffer(file);
-    }
-    
-    // Converter para TXT
-    convertBtn.addEventListener('click', function() {
-        if (!excelData) {
-            showMessage('Nenhum arquivo carregado.', 'error');
-            return;
-        }
-        
-        showLoading(true);
-        
-        try {
-            const result = converter.convertExcelData(excelData);
-            
-            // Mostrar preview (apenas as primeiras 20 linhas para performance)
-            const previewLines = result.content.split('\n').slice(0, 20).join('\n');
-            previewText.value = previewLines;
-            
-            if (result.lineCount > 20) {
-                previewText.value += `\n... (${result.lineCount - 20} linhas adicionais)`;
-            }
-            
-            // Atualizar estatísticas
-            stats.textContent = `${result.lineCount} linhas processadas (101 caracteres cada)`;
-            
-            // Habilitar botão de download
-            downloadBtn.disabled = false;
-            
-            // Mostrar mensagem de sucesso
-            showMessage(`Conversão concluída! ${result.lineCount} linhas processadas.`, 'success');
-            
-            // Rolar para o preview
-            previewText.scrollIntoView({ behavior: 'smooth' });
-            
-            // Verificar comprimento da primeira linha
-            const firstLine = result.content.split('\n')[0];
-            if (firstLine && firstLine.length !== 101) {
-                console.warn(`Atenção: A primeira linha tem ${firstLine.length} caracteres, esperado 101.`);
-            }
-            
-        } catch (error) {
-            console.error('Erro na conversão:', error);
-            showMessage('Erro na conversão: ' + error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
-    });
-    
-    // Baixar arquivo TXT
-    downloadBtn.addEventListener('click', function() {
-        try {
-            const filename = currentFile ? 
-                currentFile.name.replace(/\.[^/.]+$/, "") + '_convertido.txt' : 
-                'converted_file.txt';
-            
-            converter.downloadTxt(filename);
-            
-            // Feedback visual
-            const originalText = stats.textContent;
-            stats.textContent = '✅ Arquivo baixado com sucesso!';
-            showMessage('Arquivo baixado com sucesso!', 'success');
-            
-            setTimeout(() => {
-                stats.textContent = originalText;
-            }, 3000);
-            
-        } catch (error) {
-            showMessage('Erro ao baixar arquivo: ' + error.message, 'error');
-        }
-    });
-    
-    // Limpar tudo
-    clearBtn.addEventListener('click', function() {
-        // Resetar todos os elementos
-        fileInput.value = '';
-        previewText.value = '';
-        stats.textContent = '0 linhas processadas';
-        
-        // Resetar botões
-        convertBtn.disabled = true;
-        downloadBtn.disabled = true;
-        
-        // Resetar área de upload
-        fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
-        
-        // Remover mensagens
-        showMessage('');
-        
-        // Resetar estado
-        currentFile = null;
-        excelData = null;
-        converter.txtContent = '';
-        converter.lineCount = 0;
-        
-        showMessage('Todos os dados foram limpos. Pronto para um novo arquivo.', 'success');
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-    // Elementos DOM
-    const fileInput = document.getElementById('fileInput');
-    const dropArea = document.getElementById('dropArea');
-    const convertBtn = document.getElementById('convertBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const previewText = document.getElementById('previewText');
-    const stats = document.getElementById('stats');
-    const fileInfo = document.getElementById('fileInfo');
-    
-    // Instância do conversor
-    const converter = new ExcelToTxtConverter();
-    
-    // Estado da aplicação
-    let currentFile = null;
-    let excelData = null;
-    
-    // 1. Evento de clique no botão "Selecione um arquivo" já está vinculado via label
-    // 2. Evento de change no input file
+    // Change no input
     fileInput.addEventListener('change', function(e) {
         if (e.target.files.length > 0) {
             handleFile(e.target.files[0]);
         }
     });
     
-    // 3. Drag and drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    
+    // Drag and drop
     ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlight, false);
+        dropArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            dropArea.classList.add('dragover');
+        });
     });
     
     ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlight, false);
+        dropArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            
+            if (eventName === 'drop') {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            }
+        });
     });
     
-    function highlight() {
-        dropArea.classList.add('dragover');
-    }
-    
-    function unhighlight() {
-        dropArea.classList.remove('dragover');
-    }
-    
-    dropArea.addEventListener('drop', function(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
-    });
+    // ===== PROCESSAMENTO DO ARQUIVO =====
     
     function handleFile(file) {
+        console.log('Arquivo selecionado:', file.name);
         currentFile = file;
         
-        // Verificar se é um arquivo Excel
+        // Validação básica
         if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-            alert('Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
+            alert('Selecione um arquivo Excel (.xlsx, .xls) ou CSV');
             return;
         }
         
-        // Atualizar informações do arquivo
-        fileInfo.textContent = `Arquivo: ${file.name} (Carregando...)`;
+        fileInfo.textContent = `Processando: ${file.name}`;
         
-        // Ler o arquivo
         const reader = new FileReader();
         
         reader.onload = function(e) {
             try {
-                const data = e.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                let data = e.target.result;
+                let workbook;
                 
-                // Pegar a primeira planilha
+                // Para CSV
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    workbook = XLSX.read(data, { type: 'binary', raw: true });
+                } 
+                // Para Excel
+                else {
+                    if (typeof data === 'string') {
+                        workbook = XLSX.read(data, { type: 'binary' });
+                    } else {
+                        // ArrayBuffer
+                        workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    }
+                }
+                
+                // Primeira planilha
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 
                 // Converter para JSON
-                excelData = XLSX.utils.sheet_to_json(worksheet);
+                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
                 
-                console.log('Dados carregados:', excelData);
+                console.log('Dados extraídos:', excelData.length, 'linhas');
                 
-                // Habilitar botão de conversão
+                if (excelData.length > 0) {
+                    console.log('Colunas:', Object.keys(excelData[0]));
+                }
+                
+                // Habilitar conversão
                 convertBtn.disabled = false;
-                
-                // Atualizar informações do arquivo
-                fileInfo.textContent = `Arquivo: ${file.name} (${excelData.length} linhas)`;
-                
-                // Resetar preview
-                previewText.value = '';
-                stats.textContent = '0 linhas processadas';
-                downloadBtn.disabled = true;
-                
-                alert('Arquivo carregado com sucesso! Clique em "Converter para TXT" para gerar o arquivo.');
+                fileInfo.textContent = `${file.name} (${excelData.length} linhas)`;
+                stats.textContent = 'Pronto para converter';
                 
             } catch (error) {
-                console.error('Erro ao processar arquivo:', error);
-                alert('Erro ao processar o arquivo. Verifique se é um arquivo Excel válido.');
-                fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+                console.error('Erro:', error);
+                alert('Erro ao ler arquivo: ' + error.message);
+                fileInfo.textContent = 'Erro ao processar arquivo';
             }
         };
         
         reader.onerror = function() {
-            alert('Erro ao ler o arquivo.');
-            fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+            alert('Erro ao ler o arquivo');
+            fileInfo.textContent = 'Erro de leitura';
         };
         
-        reader.readAsBinaryString(file);
+        // Ler como array buffer (mais compatível)
+        reader.readAsArrayBuffer(file);
     }
     
-    // Converter para TXT
+    // ===== CONVERSÃO =====
+    
     convertBtn.addEventListener('click', function() {
         if (!excelData) {
-            alert('Nenhum arquivo carregado.');
+            alert('Nenhum arquivo carregado');
             return;
         }
         
         try {
             const result = converter.convertExcelData(excelData);
             
-            // Mostrar preview (apenas as primeiras 20 linhas para performance)
-            const previewLines = result.content.split('\n').slice(0, 20).join('\n');
-            previewText.value = previewLines;
+            // Mostrar preview
+            const lines = result.content.split('\n');
+            const preview = lines.slice(0, 15).join('\n');
+            previewText.value = preview;
             
-            if (result.lineCount > 20) {
-                previewText.value += `\n... (${result.lineCount - 20} linhas adicionais)`;
+            if (lines.length > 15) {
+                previewText.value += `\n... (mais ${lines.length - 15} linhas)`;
             }
             
-            // Atualizar estatísticas
-            stats.textContent = `${result.lineCount} linhas processadas (101 caracteres cada)`;
-            
-            // Habilitar botão de download
+            // Atualizar status
+            stats.textContent = `${result.lineCount} linhas convertidas`;
             downloadBtn.disabled = false;
             
-            // Rolar para o preview
-            previewText.scrollIntoView({ behavior: 'smooth' });
-            
         } catch (error) {
-            console.error('Erro na conversão:', error);
             alert('Erro na conversão: ' + error.message);
         }
     });
     
-    // Baixar arquivo TXT
+    // ===== DOWNLOAD =====
+    
     downloadBtn.addEventListener('click', function() {
         try {
-            const filename = currentFile ? 
-                currentFile.name.replace(/\.[^/.]+$/, "") + '_convertido.txt' : 
-                'converted_file.txt';
+            const filename = currentFile 
+                ? currentFile.name.replace(/\.[^/.]+$/, "") + '_convertido.txt'
+                : 'convertido.txt';
             
             converter.downloadTxt(filename);
-            
-            // Feedback visual
-            const originalText = stats.textContent;
-            stats.textContent = '✅ Arquivo baixado com sucesso!';
+            stats.textContent = '✅ Download concluído';
             
             setTimeout(() => {
-                stats.textContent = originalText;
-            }, 3000);
+                stats.textContent = `${converter.lineCount} linhas`;
+            }, 2000);
             
         } catch (error) {
-            alert('Erro ao baixar arquivo: ' + error.message);
+            alert('Erro ao baixar: ' + error.message);
         }
     });
     
-    // Limpar tudo
+    // ===== LIMPAR =====
+    
     clearBtn.addEventListener('click', function() {
-        // Resetar todos os elementos
         fileInput.value = '';
         previewText.value = '';
-        stats.textContent = '0 linhas processadas';
+        stats.textContent = '0 linhas';
+        fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
         
-        // Resetar botões
         convertBtn.disabled = true;
         downloadBtn.disabled = true;
         
-        // Resetar área de upload
-        fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
-        
-        // Resetar estado
-        currentFile = null;
         excelData = null;
+        currentFile = null;
         converter.txtContent = '';
         converter.lineCount = 0;
     });
-});
     
-    // Debug: Mostrar informações no console
-    console.log('Aplicação configurada com sucesso');
-    console.log('XLSX disponível:', typeof XLSX !== 'undefined');
+    // ===== DICA INICIAL =====
+    console.log('Aplicação pronta. Clique em "Selecione um arquivo" ou arraste um arquivo Excel.');
 });
