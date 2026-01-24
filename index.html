@@ -1,125 +1,110 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversor Excel → TXT Específico</title>
+    <title>Conversor Excel para TXT - Formato Específico</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1><i class="fas fa-file-code"></i> Conversor Excel → TXT</h1>
-            <p class="subtitle">Converta planilhas Excel para formato TXT com estrutura fixa de campos</p>
+        <header>
+            <h1>📊 Conversor Excel para TXT</h1>
+            <p class="subtitle">Converta planilhas Excel para o formato TXT específico</p>
         </header>
-        
-        <main class="content">
-            <section class="upload-section">
-                <div class="upload-box" id="dropArea">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <h2>Arraste e solte seu arquivo aqui</h2>
-                    <p>ou clique para selecionar</p>
-                    <p class="formats">Formatos suportados: .xlsx, .xls, .csv</p>
-                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls,.csv">
-                    <label for="excelFile" class="file-label">
-                        <i class="fas fa-file-excel"></i> Selecionar Arquivo
+
+        <main>
+            <div class="upload-section">
+                <div class="file-upload-area" id="dropArea">
+                    <div class="upload-icon">📤</div>
+                    <h3>Arraste e solte seu arquivo Excel aqui</h3>
+                    <p>ou</p>
+                    <label for="fileInput" class="btn btn-primary">
+                        Selecione um arquivo
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
                     </label>
-                    <div class="selected-file" id="selectedFileName"></div>
+                    <p class="file-types">Formatos suportados: .xlsx, .xls, .csv</p>
                 </div>
-            </section>
+            </div>
 
-            <section class="format-section">
-                <h3><i class="fas fa-table"></i> Estrutura do Formato de Saída</h3>
-                <div class="format-grid">
-                    <div class="format-item">
-                        <span class="format-label">Categoria</span>
-                        <code class="format-example">AGUA______</code>
-                        <span class="format-size">10 caracteres</span>
-                    </div>
-                    <div class="format-item">
-                        <span class="format-label">Código Item</span>
-                        <code class="format-example">100174</code>
-                        <span class="format-size">6 dígitos</span>
-                    </div>
-                    <div class="format-item">
-                        <span class="format-label">TOR + Código</span>
-                        <code class="format-example">TOR1000011</code>
-                        <span class="format-size">10 caracteres</span>
-                    </div>
-                    <div class="format-item">
-                        <span class="format-label">Data</span>
-                        <code class="format-example">06/01/2026</code>
-                        <span class="format-size">DD/MM/YYYY</span>
-                    </div>
-                    <div class="format-item">
-                        <span class="format-label">Período</span>
-                        <code class="format-example">012026</code>
-                        <span class="format-size">MMYYYY</span>
-                    </div>
-                    <div class="format-item">
-                        <span class="format-label">Valores</span>
-                        <code class="format-example">000000012118</code>
-                        <span class="format-size">4x12 dígitos</span>
-                    </div>
-                </div>
-            </section>
+            <div class="controls">
+                <button id="convertBtn" class="btn btn-convert" disabled>
+                    🔄 Converter para TXT
+                </button>
+                <button id="downloadBtn" class="btn btn-download" disabled>
+                    ⬇️ Baixar Arquivo TXT
+                </button>
+                <button id="clearBtn" class="btn btn-secondary">
+                    🗑️ Limpar Tudo
+                </button>
+            </div>
 
-            <section class="preview-section" id="previewSection">
-                <div class="preview-header">
-                    <h3><i class="fas fa-eye"></i> Pré-visualização</h3>
-                    <div class="preview-stats" id="previewStats">
-                        <span class="stat"><i class="fas fa-bars"></i> <span id="rowCount">0</span> linhas</span>
-                        <span class="stat"><i class="fas fa-font"></i> <span id="totalChars">0</span> caracteres</span>
-                        <span class="stat"><i class="fas fa-weight-hanging"></i> <span id="fileSize">0 KB</span></span>
+            <div class="preview-section">
+                <div class="section-header">
+                    <h3>📋 Prévia do Resultado</h3>
+                    <div class="stats" id="stats">
+                        <span>0 linhas processadas</span>
                     </div>
                 </div>
-                <div class="preview-content" id="txtPreview">
-                    <p class="empty-preview">Nenhum arquivo processado ainda. Carregue uma planilha para ver a pré-visualização.</p>
+                <div class="preview-container">
+                    <textarea id="previewText" readonly placeholder="O conteúdo convertido aparecerá aqui..."></textarea>
                 </div>
-                
-                <div class="action-buttons">
-                    <button id="downloadBtn" class="download-btn" disabled>
-                        <i class="fas fa-download"></i> Baixar Arquivo TXT
-                    </button>
-                    <button id="clearBtn" class="clear-btn">
-                        <i class="fas fa-trash"></i> Limpar
-                    </button>
-                </div>
-            </section>
+            </div>
 
-            <section class="info-section">
-                <div class="info-card">
-                    <h4><i class="fas fa-info-circle"></i> Como Funciona</h4>
-                    <ol>
-                        <li>Selecione sua planilha Excel ou CSV</li>
-                        <li>O sistema converte automaticamente para o formato TXT específico</li>
-                        <li>Verifique a pré-visualização do arquivo gerado</li>
-                        <li>Baixe o arquivo TXT formatado</li>
-                    </ol>
-                </div>
-                
-                <div class="info-card">
-                    <h4><i class="fas fa-exclamation-triangle"></i> Observações</h4>
-                    <div class="server-info">
-                        <p><strong>Privacidade:</strong> Todo o processamento é feito no seu navegador. Nenhum dado é enviado para servidores.</p>
-                        <p><strong>Compatibilidade:</strong> Funciona nos principais navegadores (Chrome, Firefox, Edge, Safari).</p>
-                        <p><strong>Limitações:</strong> Arquivos muito grandes podem demorar a processar.</p>
+            <div class="instructions">
+                <h3>📝 Formato de Saída Correto</h3>
+                <div class="format-example">
+                    <div class="format-line">
+                        <span class="field">Categoria</span>
+                        <span class="desc">10 caracteres (ex: "ÁGUA      ")</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Código Item</span>
+                        <span class="desc">9 caracteres (ex: "102592   ")</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Parte Código</span>
+                        <span class="desc">7 caracteres (ex: "A000011")</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Data</span>
+                        <span class="desc">DD/MM/YYYY (10 caracteres)</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Período</span>
+                        <span class="desc">6 caracteres (ex: "012025")</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Valor1</span>
+                        <span class="desc">14 caracteres, zeros à esquerda</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Valor2</span>
+                        <span class="desc">15 caracteres, zeros à esquerda</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Valor3</span>
+                        <span class="desc">14 caracteres, zeros à esquerda</span>
+                    </div>
+                    <div class="format-line">
+                        <span class="field">Valor4</span>
+                        <span class="desc">15 caracteres, zeros à esquerda</span>
+                    </div>
+                    <div class="format-line total">
+                        <span class="field">TOTAL</span>
+                        <span class="desc">101 caracteres por linha</span>
                     </div>
                 </div>
-            </section>
+            </div>
         </main>
 
-        <footer class="footer">
-            <p>Conversor Excel para TXT Específico &copy; 2024</p>
-            <p class="footer-links">
-                <a href="https://github.com/seuusuario/conversor-txt" target="_blank" id="viewSource">Código Fonte</a>
-            </p>
+        <footer>
+            <p>Desenvolvido para conversão específica de planilhas | Total de 101 caracteres por linha</p>
         </footer>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="converter.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
