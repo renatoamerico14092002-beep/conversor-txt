@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conversor Excel para TXT - Formato Específico</title>
     <link rel="stylesheet" href="style.css">
-    <!-- SheetJS (versão mais recente) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"></script>
-    <!-- Compatibilidade com navegadores mais antigos -->
-    <script src="https://cdn.jsdelivr.net/npm/polyfill-library@3.109.0/polyfill.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -25,15 +22,9 @@
                     <p>ou</p>
                     <label for="fileInput" class="btn btn-primary">
                         Selecione um arquivo
-                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
                     </label>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
                     <p class="file-types">Formatos suportados: .xlsx, .xls, .csv</p>
-                    <div id="loading" style="display: none; margin-top: 20px;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            <div class="spinner"></div>
-                            <span>Processando arquivo...</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
