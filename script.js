@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Aplicação iniciada');
+    
     // Elementos DOM
     const fileInput = document.getElementById('fileInput');
     const dropArea = document.getElementById('dropArea');
@@ -7,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearBtn = document.getElementById('clearBtn');
     const previewText = document.getElementById('previewText');
     const stats = document.getElementById('stats');
+    const fileInfo = document.getElementById('fileInfo');
+    const loading = document.getElementById('loading');
     
     // Instância do conversor
     const converter = new ExcelToTxtConverter();
@@ -14,6 +18,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Estado da aplicação
     let currentFile = null;
     let excelData = null;
+    
+    // Verificar se XLSX está disponível
+    if (typeof XLSX === 'undefined') {
+        alert('Erro: Biblioteca para leitura de Excel não carregada. Verifique sua conexão com a internet.');
+        return;
+    }
+    
+    // Funções auxiliares
+    function showLoading(show) {
+        loading.style.display = show ? 'flex' : 'none';
+    }
+    
+    function showMessage(message, type = 'info') {
+        // Remove mensagens anteriores
+        const existingMessages = document.querySelectorAll('.temp-message');
+        existingMessages.forEach(msg => msg.remove());
+        
+        if (message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `temp-message ${type === 'error' ? 'error-message' : 'success-message'}`;
+            messageDiv.textContent = message;
+            dropArea.appendChild(messageDiv);
+            
+            // Remove após 5 segundos
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+    }
     
     // Event Listeners para drag and drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -42,16 +77,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Processar arquivo dropado
-    dropArea.addEventListener('drop', handleDrop, false);
-    
-    function handleDrop(e) {
+    dropArea.addEventListener('drop', function(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
         
         if (files.length > 0) {
             handleFile(files[0]);
         }
-    }
+    });
     
     // Processar seleção de arquivo
     fileInput.addEventListener('change', function(e) {
@@ -60,14 +93,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Também permitir clicar em toda a área de drop
+    dropArea.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+            fileInput.click();
+        }
+    });
+    
     function handleFile(file) {
+        console.log('Processando arquivo:', file.name);
         currentFile = file;
         
         // Verificar se é um arquivo Excel
-        if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-            alert('Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
+        const validExtensions = ['.xlsx', '.xls', '.csv'];
+        const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+        
+        if (!validExtensions.includes(fileExt)) {
+            showMessage('Formato de arquivo não suportado. Use .xlsx, .xls ou .csv.', 'error');
             return;
         }
+        
+        // Verificar tamanho do arquivo (limite de 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showMessage('Arquivo muito grande. O limite é 10MB.', 'error');
+            return;
+        }
+        
+        // Mostrar loading
+        showLoading(true);
+        fileInfo.textContent = `Processando: ${file.name}`;
         
         // Ler o arquivo
         const reader = new FileReader();
@@ -77,13 +131,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = e.target.result;
                 let workbook;
                 
-                if (file.name.match(/\.csv$/i)) {
-                    // Para arquivos CSV
-                    const csvData = XLSX.read(data, { type: 'binary', cellDates: true });
-                    workbook = csvData;
+                // Determinar o tipo de leitura baseado na extensão
+                if (fileExt === '.csv') {
+                    workbook = XLSX.read(data, { 
+                        type: 'binary', 
+                        cellDates: true,
+                        dateNF: 'dd/mm/yyyy'
+                    });
                 } else {
-                    // Para arquivos Excel
-                    workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+                    workbook = XLSX.read(data, { 
+                        type: 'binary', 
+                        cellDates: true,
+                        dateNF: 'dd/mm/yyyy'
+                    });
                 }
                 
                 // Pegar a primeira planilha
@@ -91,45 +151,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 const worksheet = workbook.Sheets[firstSheetName];
                 
                 // Converter para JSON
-                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                excelData = XLSX.utils.sheet_to_json(worksheet, { 
+                    defval: '',
+                    raw: false,
+                    dateNF: 'dd/mm/yyyy'
+                });
                 
-                // Log para debug
-                console.log('Dados carregados:', excelData.length, 'linhas');
+                console.log('Dados carregados:', excelData);
+                console.log('Número de linhas:', excelData.length);
+                
                 if (excelData.length > 0) {
                     console.log('Primeira linha:', excelData[0]);
+                    console.log('Colunas disponíveis:', Object.keys(excelData[0]));
                 }
                 
                 // Habilitar botão de conversão
                 convertBtn.disabled = false;
                 
-                // Mostrar informações do arquivo
-                const fileInfo = `${file.name} (${excelData.length} linhas)`;
-                dropArea.querySelector('h3').textContent = `📁 ${fileInfo}`;
-                
-                // Resetar preview
-                previewText.value = '';
-                stats.textContent = '0 linhas processadas';
-                downloadBtn.disabled = true;
+                // Atualizar informações do arquivo
+                fileInfo.textContent = `${file.name} (${excelData.length} linhas carregadas)`;
+                showMessage('Arquivo carregado com sucesso! Clique em "Converter para TXT" para processar.', 'success');
                 
             } catch (error) {
                 console.error('Erro ao processar arquivo:', error);
-                alert('Erro ao processar o arquivo. Verifique se é um arquivo Excel válido. Detalhes no console.');
+                showMessage('Erro ao processar o arquivo: ' + error.message, 'error');
+                fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+            } finally {
+                showLoading(false);
             }
         };
         
         reader.onerror = function() {
-            alert('Erro ao ler o arquivo.');
+            showLoading(false);
+            showMessage('Erro ao ler o arquivo. Tente novamente.', 'error');
+            fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
         };
         
-        reader.readAsBinaryString(file);
+        reader.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                fileInfo.textContent = `Carregando: ${percent}%`;
+            }
+        };
+        
+        // Usar readAsArrayBuffer para melhor compatibilidade
+        reader.readAsArrayBuffer(file);
     }
     
     // Converter para TXT
     convertBtn.addEventListener('click', function() {
         if (!excelData) {
-            alert('Nenhum arquivo carregado.');
+            showMessage('Nenhum arquivo carregado.', 'error');
             return;
         }
+        
+        showLoading(true);
         
         try {
             const result = converter.convertExcelData(excelData);
@@ -148,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Habilitar botão de download
             downloadBtn.disabled = false;
             
+            // Mostrar mensagem de sucesso
+            showMessage(`Conversão concluída! ${result.lineCount} linhas processadas.`, 'success');
+            
             // Rolar para o preview
             previewText.scrollIntoView({ behavior: 'smooth' });
             
@@ -159,7 +238,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Erro na conversão:', error);
-            alert('Erro na conversão: ' + error.message);
+            showMessage('Erro na conversão: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
         }
     });
     
@@ -175,13 +256,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Feedback visual
             const originalText = stats.textContent;
             stats.textContent = '✅ Arquivo baixado com sucesso!';
+            showMessage('Arquivo baixado com sucesso!', 'success');
             
             setTimeout(() => {
                 stats.textContent = originalText;
             }, 3000);
             
         } catch (error) {
-            alert('Erro ao baixar arquivo: ' + error.message);
+            showMessage('Erro ao baixar arquivo: ' + error.message, 'error');
         }
     });
     
@@ -197,46 +279,21 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadBtn.disabled = true;
         
         // Resetar área de upload
-        dropArea.querySelector('h3').textContent = 'Arraste e solte seu arquivo Excel aqui';
+        fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+        
+        // Remover mensagens
+        showMessage('');
         
         // Resetar estado
         currentFile = null;
         excelData = null;
         converter.txtContent = '';
         converter.lineCount = 0;
+        
+        showMessage('Todos os dados foram limpos. Pronto para um novo arquivo.', 'success');
     });
     
-    // Copiar para área de transferência (opcional)
-    previewText.addEventListener('click', function() {
-        if (previewText.value) {
-            previewText.select();
-            document.execCommand('copy');
-            
-            // Feedback visual
-            const originalText = stats.textContent;
-            stats.textContent = '📋 Copiado para área de transferência!';
-            
-            setTimeout(() => {
-                stats.textContent = originalText;
-            }, 2000);
-        }
-    });
-    
-    // Validar colunas do Excel
-    function validateExcelColumns(firstRow) {
-        const expectedColumns = ['categoria', 'codigo_item', 'parte_codigo', 'data', 'periodo', 'valor1', 'valor2', 'valor3', 'valor4'];
-        const rowKeys = Object.keys(firstRow);
-        
-        console.log('Colunas encontradas:', rowKeys);
-        console.log('Colunas esperadas:', expectedColumns);
-        
-        // Verifica se temos pelo menos algumas das colunas esperadas
-        const missingColumns = expectedColumns.filter(col => !rowKeys.includes(col));
-        
-        if (missingColumns.length > 0) {
-            console.warn('Colunas faltando:', missingColumns);
-        }
-        
-        return true;
-    }
+    // Debug: Mostrar informações no console
+    console.log('Aplicação configurada com sucesso');
+    console.log('XLSX disponível:', typeof XLSX !== 'undefined');
 });
