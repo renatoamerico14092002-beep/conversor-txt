@@ -292,6 +292,201 @@ document.addEventListener('DOMContentLoaded', function() {
         
         showMessage('Todos os dados foram limpos. Pronto para um novo arquivo.', 'success');
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Elementos DOM
+    const fileInput = document.getElementById('fileInput');
+    const dropArea = document.getElementById('dropArea');
+    const convertBtn = document.getElementById('convertBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const previewText = document.getElementById('previewText');
+    const stats = document.getElementById('stats');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    // Instância do conversor
+    const converter = new ExcelToTxtConverter();
+    
+    // Estado da aplicação
+    let currentFile = null;
+    let excelData = null;
+    
+    // 1. Evento de clique no botão "Selecione um arquivo" já está vinculado via label
+    // 2. Evento de change no input file
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+    
+    // 3. Drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight() {
+        dropArea.classList.add('dragover');
+    }
+    
+    function unhighlight() {
+        dropArea.classList.remove('dragover');
+    }
+    
+    dropArea.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+    
+    function handleFile(file) {
+        currentFile = file;
+        
+        // Verificar se é um arquivo Excel
+        if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+            alert('Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
+            return;
+        }
+        
+        // Atualizar informações do arquivo
+        fileInfo.textContent = `Arquivo: ${file.name} (Carregando...)`;
+        
+        // Ler o arquivo
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                
+                // Pegar a primeira planilha
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Converter para JSON
+                excelData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log('Dados carregados:', excelData);
+                
+                // Habilitar botão de conversão
+                convertBtn.disabled = false;
+                
+                // Atualizar informações do arquivo
+                fileInfo.textContent = `Arquivo: ${file.name} (${excelData.length} linhas)`;
+                
+                // Resetar preview
+                previewText.value = '';
+                stats.textContent = '0 linhas processadas';
+                downloadBtn.disabled = true;
+                
+                alert('Arquivo carregado com sucesso! Clique em "Converter para TXT" para gerar o arquivo.');
+                
+            } catch (error) {
+                console.error('Erro ao processar arquivo:', error);
+                alert('Erro ao processar o arquivo. Verifique se é um arquivo Excel válido.');
+                fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+            }
+        };
+        
+        reader.onerror = function() {
+            alert('Erro ao ler o arquivo.');
+            fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+        };
+        
+        reader.readAsBinaryString(file);
+    }
+    
+    // Converter para TXT
+    convertBtn.addEventListener('click', function() {
+        if (!excelData) {
+            alert('Nenhum arquivo carregado.');
+            return;
+        }
+        
+        try {
+            const result = converter.convertExcelData(excelData);
+            
+            // Mostrar preview (apenas as primeiras 20 linhas para performance)
+            const previewLines = result.content.split('\n').slice(0, 20).join('\n');
+            previewText.value = previewLines;
+            
+            if (result.lineCount > 20) {
+                previewText.value += `\n... (${result.lineCount - 20} linhas adicionais)`;
+            }
+            
+            // Atualizar estatísticas
+            stats.textContent = `${result.lineCount} linhas processadas (101 caracteres cada)`;
+            
+            // Habilitar botão de download
+            downloadBtn.disabled = false;
+            
+            // Rolar para o preview
+            previewText.scrollIntoView({ behavior: 'smooth' });
+            
+        } catch (error) {
+            console.error('Erro na conversão:', error);
+            alert('Erro na conversão: ' + error.message);
+        }
+    });
+    
+    // Baixar arquivo TXT
+    downloadBtn.addEventListener('click', function() {
+        try {
+            const filename = currentFile ? 
+                currentFile.name.replace(/\.[^/.]+$/, "") + '_convertido.txt' : 
+                'converted_file.txt';
+            
+            converter.downloadTxt(filename);
+            
+            // Feedback visual
+            const originalText = stats.textContent;
+            stats.textContent = '✅ Arquivo baixado com sucesso!';
+            
+            setTimeout(() => {
+                stats.textContent = originalText;
+            }, 3000);
+            
+        } catch (error) {
+            alert('Erro ao baixar arquivo: ' + error.message);
+        }
+    });
+    
+    // Limpar tudo
+    clearBtn.addEventListener('click', function() {
+        // Resetar todos os elementos
+        fileInput.value = '';
+        previewText.value = '';
+        stats.textContent = '0 linhas processadas';
+        
+        // Resetar botões
+        convertBtn.disabled = true;
+        downloadBtn.disabled = true;
+        
+        // Resetar área de upload
+        fileInfo.textContent = 'Arraste e solte seu arquivo Excel aqui';
+        
+        // Resetar estado
+        currentFile = null;
+        excelData = null;
+        converter.txtContent = '';
+        converter.lineCount = 0;
+    });
+});
     
     // Debug: Mostrar informações no console
     console.log('Aplicação configurada com sucesso');
