@@ -34,10 +34,10 @@ class ExcelToTxtConverter {
     formatDate(dateString) {
         try {
             // Tenta converter a data
-            let date;
+            let data;
             
-            if (dateString instanceof Date) {
-                date = dateString;
+            if (dateString instanceof Data) {
+                data = dateString;
             } else if (typeof dateString === 'string') {
                 // Remove qualquer hora que possa estar presente
                 const datePart = dateString.split(' ')[0];
