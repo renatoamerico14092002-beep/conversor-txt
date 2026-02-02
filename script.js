@@ -25,30 +25,34 @@ class ExcelToTxtConverter {
         return intValue.toString().padStart(length, '0');
     }
 
-    formatDate(dateString) {
-        try {
-            let data;
-            if (dateString instanceof Data) {
-                data = dateString;
-            } else if (typeof dateString === 'string') {
-                const datePart = dateString.split(' ')[0];
-                date = new Date(datePart);
-            } else {
-                data = new Date();
-            }
+   formatDate(dateString) {
+    try {
+        if (!dateString) return '00/00/0000';
+        
+        // Remove hora se existir
+        const datePart = dateString.toString().split(' ')[0];
+        
+        // Verifica formato DD/MM/YYYY
+        const parts = datePart.split('/');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
             
-            if (isNaN(date.getTime())) {
+            // Valida se é uma data real
+            const testDate = new Date(`${year}-${month}-${day}`);
+            if (isNaN(testDate.getTime())) {
                 return '00/00/0000';
             }
             
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear();
             return `${day}/${month}/${year}`;
-        } catch (error) {
-            return '00/00/0000';
         }
+        
+        return '00/00/0000';
+    } catch (error) {
+        return '00/00/0000';
     }
+}
 
     formatParteCodigo(parteCodigo) {
         let str = String(parteCodigo || '');
