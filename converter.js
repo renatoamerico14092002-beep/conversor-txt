@@ -41,9 +41,7 @@ class ExcelToTxtConverter {
             } else if (typeof dateString === 'string') {
                 // Remove qualquer hora que possa estar presente
                 const datePart = dateString.split(' ')[0];
-                date = new Date(datePart);
-            } else {
-                date = new Date();
+               
             }
             
             // Verifica se a data é válida
