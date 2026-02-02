@@ -91,7 +91,7 @@ class ExcelToTxtConverter {
         const categoria = this.formatField(row.categoria || 'AGUA', 10);
         const codigoItem = this.formatField(row.codigo_item || '', 9);
         const parteCodigo = this.formatParteCodigo(row.parte_codigo || row.parteCodigo || '');
-        const data = this.formatDate(row.data || row.date || '');
+        const data = this.formatDate(row.data || row.data || '');
         const periodo = this.formatPeriodo(row.periodo || '');
         
         // Formata os valores numéricos com tamanhos específicos
