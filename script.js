@@ -27,33 +27,57 @@ class ExcelToTxtConverter {
 
    formatDate(dateString) {
     try {
-        if (!dateString) return '00/00/0000';
+        let date;
         
-        // Remove hora se existir
-        const datePart = dateString.toString().split(' ')[0];
-        
-        // Verifica formato DD/MM/YYYY
-        const parts = datePart.split('/');
-        if (parts.length === 3) {
-            const day = parts[0].padStart(2, '0');
-            const month = parts[1].padStart(2, '0');
-            const year = parts[2];
+        // Verifica se já é um objeto Date
+        if (dateString instanceof Date) {
+            date = dateString;
+        } 
+        // Se for string, faz o parsing
+        else if (typeof dateString === 'string') {
+            // Remove espaços extras e divide
+            const str = dateString.trim();
             
-            // Valida se é uma data real
-            const testDate = new Date(`${year}-${month}-${day}`);
-            if (isNaN(testDate.getTime())) {
-                return '00/00/0000';
+            // Tenta vários formatos comuns de data
+            // Formato brasileiro: DD/MM/YYYY ou DD/MM/YYYY HH:mm:ss
+            if (str.includes('/')) {
+                const parts = str.split(/[/\s]/);
+                if (parts.length >= 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // Mês começa em 0 no JS
+                    const year = parseInt(parts[2], 10);
+                    date = new Date(year, month, day);
+                }
             }
-            
-            return `${day}/${month}/${year}`;
+            // Formato ISO: YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss
+            else if (str.includes('-')) {
+                date = new Date(str);
+            }
+            // Outros formatos
+            else {
+                date = new Date(str);
+            }
+        } 
+        // Se não for string nem Date, usa data atual
+        else {
+            date = new Date();
         }
         
-        return '00/00/0000';
+        // Verifica se a data é válida
+        if (!date || isNaN(date.getTime())) {
+            return '00/00/0000';
+        }
+        
+        // Formata no padrão brasileiro DD/MM/YYYY
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getDate().getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
     } catch (error) {
         return '00/00/0000';
     }
 }
-
     formatParteCodigo(parteCodigo) {
         let str = String(parteCodigo || '');
         
