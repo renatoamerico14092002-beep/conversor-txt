@@ -27,14 +27,14 @@ class ExcelToTxtConverter {
 
     formatDate(dateString) {
         try {
-            let date;
-            if (dateString instanceof Date) {
-                date = dateString;
+            let data;
+            if (dateString instanceof Data) {
+                data = dateString;
             } else if (typeof dateString === 'string') {
                 const datePart = dateString.split(' ')[0];
                 date = new Date(datePart);
             } else {
-                date = new Date();
+                data = new Date();
             }
             
             if (isNaN(date.getTime())) {
